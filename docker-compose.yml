@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  server:
+    image: ${DOCKER_USERNAME:-myuser}/todo-server:latest
+    build:
+      context: ./server
+    ports:
+      - "5000:5000"
+    volumes:
+      - todo-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+    restart: always
+
+  client:
+    image: ${DOCKER_USERNAME:-myuser}/todo-client:latest
+    build:
+      context: ./client
+    ports:
+      - "3000:80"
+    depends_on:
+      - server
+    restart: always
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 30 --cleanup
+    restart: always
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    ports:
+      - "3001:3001"
+    volumes:
+      - uptime-kuma-data:/app/data
+    restart: always
+
+volumes:
+  todo-data:
+  uptime-kuma-data:

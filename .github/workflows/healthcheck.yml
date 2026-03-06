@@ -1,0 +1,40 @@
+name: Health Check After Deploy
+
+on:
+  workflow_run:
+    workflows: ["Deploy to NAS via SSH"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  healthcheck:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for app to start
+        run: sleep 30
+
+      - name: Check app health
+        id: health
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.NAS_HOST }}:3000 || echo "000")
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check failed with status: $STATUS"
+            exit 1
+          fi
+          echo "App is healthy!"
+
+      - name: Rollback on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.NAS_HOST }}
+          username: ${{ secrets.NAS_USER }}
+          key: ${{ secrets.NAS_SSH_KEY }}
+          port: ${{ secrets.NAS_PORT || 22 }}
+          script: |
+            cd /volume1/docker/todo-app
+            bash scripts/rollback.sh

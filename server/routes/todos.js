@@ -23,10 +23,23 @@ router.get('/', (req, res) => {
 
 router.post('/', (req, res) => {
   const todos = readTodos();
-  const todo = { id: Date.now(), text: req.body.text, completed: false };
+  const todo = {
+    id: Date.now(),
+    text: req.body.text,
+    completed: false,
+    priority: req.body.priority || 'medium',
+    dueDate: req.body.dueDate || null,
+    category: req.body.category || '',
+    order: todos.length
+  };
   todos.push(todo);
   writeTodos(todos);
   res.status(201).json(todo);
+});
+
+router.put('/reorder', (req, res) => {
+  writeTodos(req.body);
+  res.json(req.body);
 });
 
 router.put('/:id', (req, res) => {
